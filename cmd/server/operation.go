@@ -58,7 +58,7 @@ func ParseOperation(r *http.Request) (Operation, error) {
 	op.Directory = dir
 	op.File = file
 	op.Bytes = bs
-  op.Key = GenerateKey(bs)
+	op.Key = GenerateKey(bs)
 
 	return op, nil
 }
