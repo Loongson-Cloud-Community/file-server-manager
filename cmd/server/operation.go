@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"io"
 	"net/http"
@@ -23,6 +25,7 @@ type Operation struct {
 	Directory string
 	File      string
 	Bytes     []byte
+	Key       string
 }
 
 func ParseOperation(r *http.Request) (Operation, error) {
@@ -45,20 +48,26 @@ func ParseOperation(r *http.Request) (Operation, error) {
 		return op, errors.New("Invalid Request Method: " + r.Method)
 	}
 
-	//TODO load content and calc hash
 	if op.Type == CREATE {
 		bs, err = io.ReadAll(r.Body)
 		if err != nil {
 			return op, errors.New("Read from request failed:" + err.Error())
 		}
 	}
-
 	op.Type = t
 	op.Directory = dir
 	op.File = file
 	op.Bytes = bs
+  op.Key = GenerateKey(bs)
 
 	return op, nil
+}
+
+func GenerateKey(bytes []byte) string {
+	var key string
+	md5sum := md5.Sum(bytes)
+	key = hex.EncodeToString(md5sum[:])
+	return key
 }
 
 func parseUrl(url string) (dir string, file string, err error) {

@@ -1,12 +1,12 @@
 package main
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"errors"
 	"net/http"
 	"os"
 	"path"
+  "os/exec"
+  "fmt"
 )
 
 const (
@@ -30,52 +30,53 @@ func main() {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodPost:
-		postHandler(w, r)
-	case http.MethodDelete:
-		deleteHandler(w, r)
+  op, err := ParseOperation(r)
+  if err != nil {
+    w.Write([]byte(err.Error()))
+    return
+  }
+	switch op.Type{
+	case CREATE:
+		err = createOperation(op)
+	case DELETE:
+		err = deleteOperation(op)
 	}
-}
-
-func postHandler(w http.ResponseWriter, r *http.Request) {
-	var err error
-	var op Operation
-
-	check := func(r *http.Request) error {
-		return nil
-	}
-	if err = check(r); err != nil {
-		goto fail
-	}
-	if op, err = ParseOperation(r); err != nil {
-		goto fail
-	}
-	if err = StoreToFileHistory(op); err != nil {
-		goto fail
-	}
-	if err = CommitToFileSources(op); err != nil {
-		goto fail
-	}
+  if err != nil {
+    w.Write([]byte(err.Error()))
+    return
+  }
 
 	w.Write([]byte("ok"))
 	return
-
-fail:
-	w.Write([]byte(err.Error()))
-	return
 }
 
-func deleteHandler(w http.ResponseWriter, r *http.Request) {
+func createOperation(op Operation) error {
+  if err := StoreToFileHistory(op); err != nil {
+    return err
+	}
+  if err := AddFileToFileSources(op); err != nil {
+    return err
+  }
+  if err := CommitToFileSources(op); err != nil {
+    return err
+	}
+  return nil
+
+}
+
+func deleteOperation(op Operation) error {
+  if err := DeleteFileFromFileSources(op); err != nil {
+    return err
+  }
+  if err := CommitToFileSources(op); err != nil {
+    return err
+  }
+  return nil
 }
 
 func StoreToFileHistory(op Operation) error {
-	var err error
-	var fileInfo os.FileInfo
-
-	key := GenerateKey(op.Bytes)
-	file := path.Join(FileHistoryDir, key)
-	fileInfo, err = os.Stat(file)
+	file := path.Join(FileHistoryDir, op.Key)
+  fileInfo, err := os.Stat(file)
 	if err == nil && fileInfo.IsDir() {
 		return errors.New("FileHistory: File already exist and is directory: " + file)
 	}
@@ -86,12 +87,36 @@ func StoreToFileHistory(op Operation) error {
 }
 
 func CommitToFileSources(op Operation) error {
-	// 判断目录
-	var err error
-	var fileInfo os.FileInfo
+	// Git Commit
+  var cmd *exec.Cmd
+  cmd = exec.Command("git", "add", ".")
+  cmd.Dir = FileSourcesDir
+  if err := cmd.Run(); err != nil {
+    return err
+  }
 
+  msg := GenerateCommitMessage(op)
+  cmd = exec.Command("git", "commit", "-m", msg)
+  cmd.Dir = FileSourcesDir
+  if err := cmd.Run(); err != nil {
+    return err
+  }
+
+	return nil
+}
+
+func DeleteFileFromFileSources(op Operation) error {
+  file := path.Join(FileSourcesDir, op.Directory, op.File)
+  err := os.Remove(file)
+  if err != nil && !errors.Is(err, os.ErrNotExist) {
+    return err
+  }
+  return nil
+}
+
+func AddFileToFileSources(op Operation) error {
 	dir := path.Join(FileSourcesDir, op.Directory)
-	fileInfo, err = os.Stat(dir)
+  fileInfo, err := os.Stat(dir)
 	if err != nil && errors.Is(err, os.ErrNotExist) {
 		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 			return err
@@ -105,18 +130,21 @@ func CommitToFileSources(op Operation) error {
 	if err == nil && fileInfo.IsDir() {
 		return errors.New("FileSources: File already exist and is directory: " + file)
 	}
-	key := GenerateKey(op.Bytes)
-	if err = WriteFile(file, []byte(key)); err != nil {
+	if err = WriteFile(file, []byte(op.Key)); err != nil {
 		return err
 	}
+  return nil
 
-	// Git Commit
-	return nil
 }
 
-func GenerateKey(bytes []byte) string {
-	var key string
-	md5sum := md5.Sum(bytes)
-	key = hex.EncodeToString(md5sum[:])
-	return key
+// CREATE: dir/file
+func GenerateCommitMessage(op Operation) string {
+  var t string
+  switch op.Type {
+    case CREATE:
+      t = "CREATE"
+    case DELETE:
+      t = "DELETE"
+  }
+  return fmt.Sprintf("%s: %s/%s", t, op.Directory, op.File)
 }
