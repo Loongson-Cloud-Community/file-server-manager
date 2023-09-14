@@ -7,6 +7,8 @@ import (
 	"path"
   "os/exec"
   "fmt"
+  "flag"
+  "log"
 )
 
 const (
@@ -19,14 +21,20 @@ var FileHistoryDir string
 var FileSourcesDir string
 
 func init() {
-	Host = "127.0.0.1:8080"
-	FileHistoryDir = "/tmp/file-uploader/file-history"
-	FileSourcesDir = "/tmp/file-uploader/file-sources"
+  flag.StringVar(&Host, "host", "127.0.0.1:8080", "")
+  flag.StringVar(&FileHistoryDir, "file-history", "/data/file-history", "")
+  flag.StringVar(&FileSourcesDir, "file-sources", "/data/file-sources", "")
+  flag.Parse()
 }
 
 func main() {
+  log.Printf("Host: %s", Host)
+  log.Printf("FileHistory: %s", FileHistoryDir)
+  log.Printf("FileSources: %s", FileSourcesDir)
 	http.HandleFunc("/", handler)
-	http.ListenAndServe(Host, nil)
+  if err := http.ListenAndServe(Host, nil); err != nil {
+    log.Print(err)
+  }
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +69,6 @@ func createOperation(op Operation) error {
     return err
 	}
   return nil
-
 }
 
 func deleteOperation(op Operation) error {
