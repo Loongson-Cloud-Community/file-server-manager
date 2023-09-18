@@ -1,0 +1,13 @@
+[Unit]
+Description=A File Server Manager for Loongson.
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Restart=on-abort
+ExecStart=/usr/bin/file-server-manager -d /data/file-server-manager
+
+[Install]
+WantedBy=multi-user.target
+
