@@ -19,19 +19,19 @@ const (
 )
 
 var host string
-var root string
+var data string
 var FileHistoryDir string
 var FileSourcesDir string
 var FileServerDir string
 
 func init() {
 	flag.StringVar(&host, "host", "127.0.0.1:8080", "")
-	flag.StringVar(&root, "root", "/data", "")
+	flag.StringVar(&data, "data", "/data", "")
 	flag.Parse()
 
-	FileHistoryDir = path.Join(root, FileHistoryDirName)
-	FileSourcesDir = path.Join(root, FileSourcesDirName)
-	FileServerDir = path.Join(root, FileServerDirName)
+	FileHistoryDir = path.Join(data, FileHistoryDirName)
+	FileSourcesDir = path.Join(data, FileSourcesDirName)
+	FileServerDir = path.Join(data, FileServerDirName)
 }
 
 func main() {
