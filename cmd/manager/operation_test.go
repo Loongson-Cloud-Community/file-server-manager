@@ -66,9 +66,3 @@ func TestParseUrl(t *testing.T) {
 		})
 	}
 }
-
-func TestGenerateKey(t *testing.T) {
-	in := []byte("Hello, World!")
-	key := GenerateKey(in)
-	t.Logf("%v", key)
-}

@@ -4,7 +4,8 @@ import (
 	"flag"
 	"log"
 	"net/http"
-  "path"
+	_ "net/http/pprof"
+	"path"
 )
 
 const (
@@ -27,7 +28,6 @@ var FileServerDir string
 func init() {
 	flag.StringVar(&host, "host", "127.0.0.1:8080", "")
 	flag.StringVar(&data, "data", "/data", "")
-	flag.Parse()
 
 	FileHistoryDir = path.Join(data, FileHistoryDirName)
 	FileSourcesDir = path.Join(data, FileSourcesDirName)
@@ -35,6 +35,7 @@ func init() {
 }
 
 func main() {
+	flag.Parse()
 	log.Printf("Host: %s", host)
 	log.Printf("FileHistory: %s", FileHistoryDir)
 	log.Printf("FileSources: %s", FileSourcesDir)
@@ -48,22 +49,23 @@ func main() {
 func handler(w http.ResponseWriter, r *http.Request) {
 	op, err := ParseOperation(r)
 	if err != nil {
-		w.Write([]byte(err.Error()))
-		return
+		goto fail
 	}
 	if err = StoreToFileHistory(op); err != nil {
-		w.Write([]byte(err.Error()))
-		return
+		goto fail
 	}
 	if err = CommitToFileSources(op); err != nil {
-		w.Write([]byte(err.Error()))
-		return
+		goto fail
 	}
 	if err = IncSyncToFileServer(op); err != nil {
-		w.Write([]byte(err.Error()))
-		return
+		goto fail
 	}
 
 	w.Write([]byte("ok"))
+	log.Printf("[Result]:\tvalid=%v %s", op.Valid, "ok")
+	return
+fail:
+	w.Write([]byte(err.Error()))
+	log.Printf("[Result]:\tvalid=%v %s", op.Valid, err.Error())
 	return
 }

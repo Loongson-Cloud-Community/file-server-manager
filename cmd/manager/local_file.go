@@ -1,8 +1,8 @@
 package main
 
 import (
+	"errors"
 	"os"
-  "errors"
 )
 
 // WriteFile 写文件 本地文件系统

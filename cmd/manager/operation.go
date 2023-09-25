@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"errors"
 	"io"
 	"net/http"
@@ -24,19 +22,21 @@ type Operation struct {
 	Type      int
 	Directory string
 	File      string
-	Bytes     []byte
-	Key       string
+	Body      io.Reader
+	Hash      string
+	Valid     bool
 }
 
-func ParseOperation(r *http.Request) (Operation, error) {
+// ParseOperation 解析请求
+// 这里仅解析 type, dir, file，不解析 body
+func ParseOperation(r *http.Request) (*Operation, error) {
 	var dir, file string
 	var err error
-	var op Operation
 	var t int
-	var bs []byte
+	op := &Operation{}
 
 	if dir, file, err = parseUrl(r.URL.Path); err != nil {
-		return op, err
+		return nil, err
 	}
 
 	switch r.Method {
@@ -45,39 +45,24 @@ func ParseOperation(r *http.Request) (Operation, error) {
 	case http.MethodDelete:
 		t = DELETE
 	default:
-		return op, errors.New("Invalid Request Method: " + r.Method)
+		return nil, errors.New("Invalid Request Method: " + r.Method)
 	}
 
-	if op.Type == CREATE {
-		bs, err = io.ReadAll(r.Body)
-		if err != nil {
-			return op, errors.New("Read from request failed:" + err.Error())
-		}
-	}
 	op.Type = t
 	op.Directory = dir
 	op.File = file
-	op.Bytes = bs
-	op.Key = GenerateKey(bs)
+	op.Body = r.Body
+	op.Valid = true
 
 	return op, nil
 }
 
-func GenerateKey(bytes []byte) string {
-	var key string
-	md5sum := md5.Sum(bytes)
-	key = hex.EncodeToString(md5sum[:])
-	return key
-}
-
 func parseUrl(url string) (dir string, file string, err error) {
-	var turl string
-
-	turl = strings.Trim(url, "/")
-	if !strings.ContainsRune(turl, '/') {
+	u := strings.Trim(url, "/")
+	if !strings.ContainsRune(u, '/') {
 		return "", "", errors.New("Invalid url " + url)
 	}
-	dir = path.Dir(turl)
-	file = path.Base(turl)
+	dir = path.Dir(u)
+	file = path.Base(u)
 	return dir, file, nil
 }

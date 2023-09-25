@@ -13,3 +13,6 @@ release: clean build
 clean:
 	rm -rf dist
 	rm -rf *.tar.gz
+
+lint:
+	find -name *.go | xargs gofmt -w
