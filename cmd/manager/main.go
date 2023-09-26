@@ -26,7 +26,7 @@ var FileSourcesDir string
 var FileServerDir string
 
 func init() {
-	flag.StringVar(&host, "host", "127.0.0.1:8080", "")
+	flag.StringVar(&host, "host", "0.0.0.0:8080", "")
 	flag.StringVar(&data, "data", "/data", "")
 
 	FileHistoryDir = path.Join(data, FileHistoryDirName)

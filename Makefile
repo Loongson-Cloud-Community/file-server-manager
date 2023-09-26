@@ -16,3 +16,6 @@ clean:
 
 lint:
 	find -name *.go | xargs gofmt -w
+
+image:
+	docker build -t loongson/file-server-manager .
